@@ -65,9 +65,11 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
+                        mkdir -p .scannerwork
                         docker run --rm \
                             --network jenkins-net \
                             -v "$PWD:/usr/src" \
+                            -v "$PWD/.scannerwork:/usr/src/.scannerwork" \
                             sonarsource/sonar-scanner-cli \
                             -Dsonar.projectKey=crisisview-api \
                             -Dsonar.projectName="CrisisView API" \
@@ -75,7 +77,8 @@ pipeline {
                             -Dsonar.exclusions="**/node_modules/**,**/__tests__/**,**/coverage/**,**/migration.js,**/seed.js" \
                             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
                             -Dsonar.host.url=$SONAR_HOST_URL \
-                            -Dsonar.login=$SONAR_AUTH_TOKEN
+                            -Dsonar.login=$SONAR_AUTH_TOKEN \
+                            -Dsonar.working.directory=/usr/src/.scannerwork
                     '''
                 }
             }
