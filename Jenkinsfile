@@ -2,7 +2,7 @@ pipeline {
     agent { label 'docker-agent' }
 
     environment {
-        IMAGE_NAME = "crisisview-api"
+        IMAGE_NAME = "25jeanbaptiste/crisisview-api"
         IMAGE_TAG  = "${BUILD_NUMBER}"
     }
 
@@ -120,34 +120,54 @@ pipeline {
             }
         }
 
+        stage('Push Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-credentials',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${IMAGE_NAME}:latest
+                        docker logout
+                    '''
+                }
+            }
+        }
+
         stage('Deploy Staging') {
             steps {
-                sh '''
-                    export API_IMAGE=${IMAGE_NAME}:${IMAGE_TAG}
-                    docker compose -f deploy/docker-compose.staging.yml up -d
-                    sleep 10
-                '''
+                sshagent(['vm-aws-ssh']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@51.21.152.249 "
+                            docker pull 25jeanbaptiste/crisisview-api:latest
+                            docker stop crisisview-api-staging 2>/dev/null || true
+                            docker rm crisisview-api-staging 2>/dev/null || true
+                            docker run -d \
+                                --name crisisview-api-staging \
+                                --restart unless-stopped \
+                                -p 3001:3001 \
+                                -e NODE_ENV=staging \
+                                -e DB_HOST=localhost \
+                                -e DB_PORT=3306 \
+                                -e DB_USER=root \
+                                -e DB_PASSWORD=root \
+                                -e DB_NAME=crisisview \
+                                25jeanbaptiste/crisisview-api:latest
+                        "
+                    '''
+                }
             }
         }
 
         stage('Smoke Tests') {
             steps {
                 sh '''
-                    docker run --rm \
-                        --network staging-net \
-                        curlimages/curl:latest \
-                        sh -c '
-                            echo "=== SMOKE TESTS ==="
-                            echo "[TEST] API /health"
-                            curl -sf --max-time 10 --retry 5 --retry-delay 3 http://crisisview-api-staging:3001/health
-                            echo ""
-                            echo "[OK] API /health"
-                            echo "[TEST] API /incidents"
-                            curl -sf --max-time 10 --retry 3 --retry-delay 3 http://crisisview-api-staging:3001/incidents
-                            echo ""
-                            echo "[OK] API /incidents"
-                            echo "=== SMOKE TESTS OK ==="
-                        '
+                    sleep 10
+                    curl -sf --max-time 15 --retry 5 --retry-delay 3 http://51.21.152.249:3001/health
+                    echo "[OK] API health check passed"
                 '''
             }
         }
