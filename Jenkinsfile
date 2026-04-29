@@ -102,19 +102,20 @@ pipeline {
         stage('Scan Docker Image') {
             steps {
                 sh '''
+                    mkdir -p reports/security
                     docker run --rm \
                         -v /var/run/docker.sock:/var/run/docker.sock \
-                        -v "$PWD:/project" \
+                        -v "$PWD/reports/security:/reports" \
                         aquasec/trivy:latest image \
                         --format json \
-                        --output /project/reports/security/trivy-image.json \
+                        --output /reports/trivy-image.json \
                         ${IMAGE_NAME}:${IMAGE_TAG} || true
                 '''
             }
             post {
                 always {
                     archiveArtifacts allowEmptyArchive: true,
-                        artifacts: 'reports/security/trivy-image.json'
+                        artifacts: 'reports/security/**'
                 }
             }
         }
