@@ -72,7 +72,8 @@ pipeline {
                             sonarsource/sonar-scanner-cli \
                             -Dsonar.projectKey=crisisview-api \
                             -Dsonar.projectName="CrisisView API" \
-                            -Dsonar.sources=routes,server.js,db.js,models.js \
+                            -Dsonar.sources=. \
+                            -Dsonar.exclusions="**/node_modules/**,**/__tests__/**,**/coverage/**,**/migration.js,**/seed.js,.scannerwork/**" \
                             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
                             -Dsonar.host.url=$SONAR_HOST_URL \
                             -Dsonar.login=$SONAR_AUTH_TOKEN
