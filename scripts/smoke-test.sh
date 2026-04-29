@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API_URL="${API_URL:-http://localhost:3001}"
+API_URL="${API_URL:-http://crisisview-api-staging:3001}"
 MAX_RETRIES=10
 SLEEP=3
 

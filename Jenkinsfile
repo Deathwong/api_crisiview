@@ -65,6 +65,7 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
+                        chmod -R 755 .
                         docker run --rm \
                             --network jenkins-net \
                             -v "$PWD:/usr/src" \
@@ -73,7 +74,8 @@ pipeline {
                             -Dsonar.projectKey=crisisview-api \
                             -Dsonar.projectName="CrisisView API" \
                             -Dsonar.sources=. \
-                            -Dsonar.exclusions="**/node_modules/**,**/__tests__/**,**/coverage/**,**/migration.js,**/seed.js,.scannerwork/**" \
+                            -Dsonar.inclusions="**/*.js" \
+                            -Dsonar.exclusions="**/node_modules/**,**/__tests__/**,**/coverage/**,**/migration.js,**/seed.js" \
                             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
                             -Dsonar.host.url=$SONAR_HOST_URL \
                             -Dsonar.login=$SONAR_AUTH_TOKEN
@@ -134,7 +136,11 @@ pipeline {
             steps {
                 sh '''
                     chmod +x scripts/smoke-test.sh
-                    ./scripts/smoke-test.sh
+                    docker run --rm \
+                        --network staging-net \
+                        -v "$PWD/scripts:/scripts" \
+                        alpine:latest \
+                        sh /scripts/smoke-test.sh
                 '''
             }
         }
