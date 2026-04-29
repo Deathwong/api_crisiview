@@ -71,7 +71,7 @@ pipeline {
                             -v "$PWD:/usr/src" \
                             --user root \
                             sonarsource/sonar-scanner-cli \
-                            -Dsonar.projectBaseDir=/usr/src \
+                            -Dproject.settings=/usr/src/sonar-project.properties \
                             -Dsonar.host.url=$SONAR_HOST_URL \
                             -Dsonar.login=$SONAR_AUTH_TOKEN
                     '''
