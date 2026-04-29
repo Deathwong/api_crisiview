@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
+import { fileURLToPath } from 'url';
 import { sequelize } from './db.js';
 import './models.js';
 
@@ -31,4 +32,9 @@ async function start() {
     }
 }
 
-start();
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+    start();
+}
+
+export { app, start };
