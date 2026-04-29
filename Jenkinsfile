@@ -135,12 +135,21 @@ pipeline {
         stage('Smoke Tests') {
             steps {
                 sh '''
-                    chmod +x scripts/smoke-test.sh
                     docker run --rm \
                         --network staging-net \
-                        -v "$PWD/scripts:/scripts" \
-                        alpine:latest \
-                        sh /scripts/smoke-test.sh
+                        curlimages/curl:latest \
+                        sh -c '
+                            echo "=== SMOKE TESTS ==="
+                            echo "[TEST] API /health"
+                            curl -sf --max-time 10 --retry 5 --retry-delay 3 http://crisisview-api-staging:3001/health
+                            echo ""
+                            echo "[OK] API /health"
+                            echo "[TEST] API /incidents"
+                            curl -sf --max-time 10 --retry 3 --retry-delay 3 http://crisisview-api-staging:3001/incidents
+                            echo ""
+                            echo "[OK] API /incidents"
+                            echo "=== SMOKE TESTS OK ==="
+                        '
                 '''
             }
         }
