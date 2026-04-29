@@ -18,6 +18,10 @@ app.use('/techniciens', technicienRoutes);
 app.use('/incidents', incidentRoutes);
 app.use('/interventions', interventionRoutes);
 
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'UP', service: 'crisisview-api' });
+});
+
 async function start() {
     try {
         await sequelize.authenticate();
