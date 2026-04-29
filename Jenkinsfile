@@ -66,6 +66,10 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
                         chmod -R 755 .
+                        echo "=== Contenu du workspace ==="
+                        ls -la
+                        echo "=== Contenu routes ==="
+                        ls -la routes/ || echo "routes introuvable"
                         docker run --rm \
                             --network jenkins-net \
                             -v "$PWD:/usr/src" \
