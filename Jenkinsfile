@@ -4,6 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME = "25jeanbaptiste/crisisview-api"
         IMAGE_TAG  = "${BUILD_NUMBER}"
+        STAGING_HOST = "51.21.152.249"
     }
 
     options {
@@ -69,14 +70,14 @@ pipeline {
                             --network jenkins-net \
                             --user root \
                             --volumes-from jenkins-agent \
-                            -w $PWD \
-                            -e SONAR_HOST_URL=$SONAR_HOST_URL \
-                            -e SONAR_TOKEN=$SONAR_AUTH_TOKEN \
+                            -w "$PWD" \
+                            -e SONAR_HOST_URL="$SONAR_HOST_URL" \
+                            -e SONAR_TOKEN="$SONAR_AUTH_TOKEN" \
                             sonarsource/sonar-scanner-cli \
                             -Dsonar.projectKey=crisisview-api \
                             -Dsonar.projectName=CrisisView-API \
                             -Dsonar.sources=routes,server.js,db.js,models.js \
-                            -Dsonar.projectBaseDir=$PWD
+                            -Dsonar.projectBaseDir="$PWD"
                     '''
                 }
             }
@@ -103,6 +104,7 @@ pipeline {
             steps {
                 sh '''
                     mkdir -p reports/security
+
                     docker run --rm \
                         -v /var/run/docker.sock:/var/run/docker.sock \
                         -v "$PWD/reports/security:/reports" \
@@ -141,7 +143,7 @@ pipeline {
             steps {
                 sshagent(['vm-aws-ssh']) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ubuntu@51.21.152.249 "
+                        ssh -o StrictHostKeyChecking=no ubuntu@${STAGING_HOST} "
                             docker network create crisisview-net 2>/dev/null || true
 
                             docker ps -a --format '{{.Names}}' | grep -q '^crisisview-db-staging$' || \
@@ -154,7 +156,17 @@ pipeline {
                                 -p 3307:3306 \
                                 mysql:8.4
 
-                            docker pull 25jeanbaptiste/crisisview-api:latest
+                            echo 'Waiting for MySQL...'
+                            for i in \\$(seq 1 6); do
+                                if docker exec crisisview-db-staging mysqladmin ping -h localhost -uroot -proot --silent; then
+                                    echo 'MySQL is ready'
+                                    break
+                                fi
+                                echo 'MySQL not ready yet... retry'
+                                sleep 5
+                            done
+
+                            docker pull ${IMAGE_NAME}:latest
 
                             docker stop crisisview-api-staging 2>/dev/null || true
                             docker rm crisisview-api-staging 2>/dev/null || true
@@ -170,7 +182,7 @@ pipeline {
                                 -e DB_USER=root \
                                 -e DB_PASSWORD=root \
                                 -e DB_NAME=crisisview \
-                                25jeanbaptiste/crisisview-api:latest
+                                ${IMAGE_NAME}:latest
                         "
                     '''
                 }
@@ -180,9 +192,20 @@ pipeline {
         stage('Smoke Tests') {
             steps {
                 sh '''
-                    sleep 10
-                    curl -sf --max-time 15 --retry 5 --retry-delay 3 http://51.21.152.249:3001/health
-                    echo "[OK] API health check passed"
+                    echo "Waiting for API to be ready..."
+
+                    for i in $(seq 1 6); do
+                        if curl -sf --max-time 10 http://${STAGING_HOST}:3001/health; then
+                            echo "[OK] API health check passed"
+                            exit 0
+                        fi
+
+                        echo "API not ready yet... retry $i/6"
+                        sleep 5
+                    done
+
+                    echo "[ERROR] API health check failed"
+                    exit 1
                 '''
             }
         }
@@ -193,17 +216,18 @@ pipeline {
                     artifacts: 'reports/**'
             }
         }
-
     }
 
     post {
         success {
             echo "Pipeline API CrisisView OK — build #${BUILD_NUMBER}"
         }
+
         failure {
             echo "Pipeline API CrisisView en echec — voir rapports Jenkins"
             archiveArtifacts allowEmptyArchive: true, artifacts: 'reports/**'
         }
+
         always {
             sh 'docker ps || true'
         }
