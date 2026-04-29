@@ -65,22 +65,18 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
-                        chmod -R 755 .
-                        echo "=== Contenu du workspace ==="
-                        ls -la
-                        echo "=== Contenu routes ==="
-                        ls -la routes/ || echo "routes introuvable"
                         docker run --rm \
                             --network jenkins-net \
-                            -v "$PWD:/usr/src" \
                             --user root \
+                            --volumes-from jenkins-agent \
+                            -w $PWD \
                             -e SONAR_HOST_URL=$SONAR_HOST_URL \
                             -e SONAR_TOKEN=$SONAR_AUTH_TOKEN \
                             sonarsource/sonar-scanner-cli \
                             -Dsonar.projectKey=crisisview-api \
                             -Dsonar.projectName=CrisisView-API \
-                            -Dsonar.projectBaseDir=/usr/src \
-                            -Dsonar.sources=routes,server.js,db.js,models.js
+                            -Dsonar.sources=routes,server.js,db.js,models.js \
+                            -Dsonar.projectBaseDir=$PWD
                     '''
                 }
             }
