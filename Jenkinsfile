@@ -142,15 +142,30 @@ pipeline {
                 sshagent(['vm-aws-ssh']) {
                     sh '''
                         ssh -o StrictHostKeyChecking=no ubuntu@51.21.152.249 "
+                            docker network create crisisview-net 2>/dev/null || true
+
+                            docker ps -a --format '{{.Names}}' | grep -q '^crisisview-db-staging$' || \
+                            docker run -d \
+                                --name crisisview-db-staging \
+                                --network crisisview-net \
+                                --restart unless-stopped \
+                                -e MYSQL_ROOT_PASSWORD=root \
+                                -e MYSQL_DATABASE=crisisview \
+                                -p 3307:3306 \
+                                mysql:8.4
+
                             docker pull 25jeanbaptiste/crisisview-api:latest
+
                             docker stop crisisview-api-staging 2>/dev/null || true
                             docker rm crisisview-api-staging 2>/dev/null || true
+
                             docker run -d \
                                 --name crisisview-api-staging \
+                                --network crisisview-net \
                                 --restart unless-stopped \
                                 -p 3001:3001 \
                                 -e NODE_ENV=staging \
-                                -e DB_HOST=localhost \
+                                -e DB_HOST=crisisview-db-staging \
                                 -e DB_PORT=3306 \
                                 -e DB_USER=root \
                                 -e DB_PASSWORD=root \
