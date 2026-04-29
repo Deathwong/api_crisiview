@@ -70,10 +70,13 @@ pipeline {
                             --network jenkins-net \
                             -v "$PWD:/usr/src" \
                             --user root \
+                            -e SONAR_HOST_URL=$SONAR_HOST_URL \
+                            -e SONAR_TOKEN=$SONAR_AUTH_TOKEN \
                             sonarsource/sonar-scanner-cli \
-                            -Dproject.settings=/usr/src/sonar-project.properties \
-                            -Dsonar.host.url=$SONAR_HOST_URL \
-                            -Dsonar.login=$SONAR_AUTH_TOKEN
+                            -Dsonar.projectKey=crisisview-api \
+                            -Dsonar.projectName=CrisisView-API \
+                            -Dsonar.sources=/usr/src \
+                            -Dsonar.inclusions=routes/*.js,server.js,db.js,models.js
                     '''
                 }
             }
