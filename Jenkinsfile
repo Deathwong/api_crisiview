@@ -79,7 +79,8 @@ pipeline {
                             sonarsource/sonar-scanner-cli \
                             -Dsonar.projectKey=crisisview-api \
                             -Dsonar.projectName=CrisisView-API \
-                            -Dsonar.sources=/usr/src/routes,/usr/src/server.js,/usr/src/db.js,/usr/src/models.js
+                            -Dsonar.projectBaseDir=/usr/src \
+                            -Dsonar.sources=routes,server.js,db.js,models.js
                     '''
                 }
             }
